@@ -2,7 +2,7 @@ import re
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 try:
     from backend.database import init_db, save_scan, get_history, get_analytics
@@ -29,9 +29,35 @@ def on_startup():
     init_db()
 
 
+SUPPORTED_TARGET_TYPES = {"payload", "ip", "domain", "url", "hash"}
+
+
 class ThreatRequest(BaseModel):
     target: str
     target_type: str
+
+    @field_validator("target")
+    @classmethod
+    def validate_target(cls, v: str) -> str:
+        if not isinstance(v, str):
+            raise ValueError("Target must be a string.")
+        v = v.strip()
+        if not v:
+            raise ValueError("Target cannot be empty.")
+        if len(v) > 2048:
+            raise ValueError("Target must not exceed 2048 characters.")
+        return v
+
+    @field_validator("target_type")
+    @classmethod
+    def validate_target_type(cls, v: str) -> str:
+        if not isinstance(v, str):
+            raise ValueError("Target type must be a string.")
+        v = v.strip().lower()
+        if v not in SUPPORTED_TARGET_TYPES:
+            allowed = ", ".join(sorted(SUPPORTED_TARGET_TYPES))
+            raise ValueError(f"Invalid target_type. Supported target types are: {allowed}.")
+        return v
 
 
 class ThreatResponse(BaseModel):
@@ -122,11 +148,8 @@ def health_check():
 
 @app.post("/api/analyze", response_model=ThreatResponse)
 def analyze_threat(request: ThreatRequest):
-    target_clean = request.target.strip()
-    target_type_clean = request.target_type.strip()
-
-    if not target_clean:
-        raise HTTPException(status_code=400, detail="Target cannot be empty.")
+    target_clean = request.target
+    target_type_clean = request.target_type
 
     target_lower = target_clean.lower()
     detected_indicators = []
@@ -201,5 +224,5 @@ def get_analytics_endpoint():
     """Retrieve aggregated analytics statistics derived from SQLite database."""
     try:
         return get_analytics()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch analytics: {str(e)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to fetch analytics.")
