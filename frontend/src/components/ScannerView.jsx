@@ -1,95 +1,72 @@
 import React, { useState } from 'react';
-import { Search, ShieldAlert, Cpu, AlertTriangle, CheckCircle, Terminal, RefreshCw, FileText, Zap } from 'lucide-react';
+import { Search, ShieldAlert, Cpu, AlertTriangle, CheckCircle, Terminal, RefreshCw, Zap } from 'lucide-react';
+import { analyzeThreat } from '../api';
 
 export default function ScannerView({ onAddThreat }) {
   const [scanType, setScanType] = useState('payload');
   const [inputText, setInputText] = useState(`SELECT * FROM users WHERE username = 'admin' OR '1'='1' --;`);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   const samplePresets = {
     payload: `SELECT * FROM users WHERE username = 'admin' OR '1'='1' --;`,
     ip: `194.26.29.112`,
-    url: `http://malicious-login-update.phishing-verify-auth.com/login.php`
+    domain: `malicious-phishing-site.com`,
+    url: `http://malicious-login-update.phishing-verify-auth.com/login.php`,
+    hash: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
   };
 
   const handleSelectPreset = (type) => {
     setScanType(type);
-    setInputText(samplePresets[type]);
+    setInputText(samplePresets[type] || '');
     setScanResult(null);
+    setErrorMessage(null);
   };
 
-  const handleRunScan = () => {
+  const handleRunScan = async () => {
     if (!inputText.trim()) return;
     setIsScanning(true);
     setScanResult(null);
+    setErrorMessage(null);
 
-    setTimeout(() => {
-      setIsScanning(false);
-      let isThreat = false;
-      let severity = 'Low';
-      let confidence = 45;
-      let threatType = 'Clean / Normal';
-      let details = 'No malicious indicators detected in payload analysis.';
-      let mitigations = ['Standard request logging', 'Normal rate limits apply'];
-
-      if (inputText.toLowerCase().includes('select') || inputText.includes("'1'='1'") || inputText.includes('--')) {
-        isThreat = true;
-        severity = 'Critical';
-        confidence = 98;
-        threatType = 'SQL Injection Vector';
-        details = 'Detected unauthorized database query syntax manipulation designed to bypass authentication.';
-        mitigations = [
-          'Enforce parameterized SQL prepared statements',
-          'Block IP at Web Application Firewall (WAF) tier',
-          'Sanitize all raw string input parameters'
-        ];
-      } else if (inputText.toLowerCase().includes('phishing') || inputText.toLowerCase().includes('malicious')) {
-        isThreat = true;
-        severity = 'High';
-        confidence = 91;
-        threatType = 'Phishing Domain Indicator';
-        details = 'URL pattern matches known credential harvesting domain fingerprints.';
-        mitigations = [
-          'Block outbound network requests to domain',
-          'Add URL to threat intelligence list'
-        ];
-      } else if (scanType === 'ip') {
-        isThreat = true;
-        severity = 'Medium';
-        confidence = 82;
-        threatType = 'Botnet Host IP';
-        details = 'IP address flagged in active SSH brute-force botnet campaign.';
-        mitigations = [
-          'Apply immediate firewall drop rule',
-          'Flag session tokens associated with IP'
-        ];
-      }
+    try {
+      const data = await analyzeThreat(inputText.trim(), scanType);
+      
+      const rawConf = data.confidence ?? 0;
+      const confidencePct = Math.round(rawConf <= 1 ? rawConf * 100 : rawConf);
+      const isThreat = data.status === 'suspicious' || data.risk_level === 'HIGH' || data.risk_level === 'MEDIUM';
 
       const result = {
-        isThreat,
-        severity,
-        confidence,
-        threatType,
-        details,
-        mitigations,
+        target: data.target,
+        targetType: data.target_type,
+        riskLevel: data.risk_level,
+        confidence: confidencePct,
+        status: data.status,
+        message: data.message,
+        detectedIndicators: data.detected_indicators || [],
+        isThreat: isThreat,
         timestamp: new Date().toLocaleTimeString()
       };
 
       setScanResult(result);
 
-      if (isThreat) {
+      if (isThreat && onAddThreat) {
         onAddThreat({
           id: Date.now(),
-          type: threatType,
-          sourceIP: scanType === 'ip' ? inputText : '192.168.1.105',
-          severity: severity,
-          confidence: confidence,
+          type: `${data.target_type.toUpperCase()} Threat Indicator`,
+          sourceIP: scanType === 'ip' ? data.target : '192.168.1.105',
+          severity: data.risk_level === 'HIGH' ? 'High' : data.risk_level === 'MEDIUM' ? 'Medium' : 'Low',
+          confidence: confidencePct,
           timestamp: new Date().toLocaleTimeString(),
           status: 'Active'
         });
       }
-    }, 1500);
+    } catch (err) {
+      setErrorMessage(err.message || 'Failed to connect to FastAPI threat detection backend.');
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   return (
@@ -100,7 +77,7 @@ export default function ScannerView({ onAddThreat }) {
           <Cpu size={24} color="#3b82f6" /> AI Threat Scanner & Vulnerability Inspector
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Simulate real-time AI security inspection on HTTP payloads, IP addresses, or suspicious URLs.
+          Real-time AI security inspection connected to CyberGuard FastAPI backend. Inspect IP addresses, domains, URLs, file hashes, and payloads.
         </p>
       </div>
 
@@ -110,20 +87,23 @@ export default function ScannerView({ onAddThreat }) {
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-              Select Inspection Target Type:
+              Select Target Type:
             </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {[
-                { id: 'payload', label: 'HTTP / SQL Payload' },
-                { id: 'ip', label: 'Target IP Address' },
-                { id: 'url', label: 'URL / Domain' }
+                { id: 'payload', label: 'HTTP / Payload' },
+                { id: 'ip', label: 'IP Address' },
+                { id: 'domain', label: 'Domain' },
+                { id: 'url', label: 'URL' },
+                { id: 'hash', label: 'File Hash' }
               ].map(item => (
                 <button
                   key={item.id}
                   onClick={() => handleSelectPreset(item.id)}
                   style={{
-                    flex: 1,
-                    padding: '8px',
+                    flex: '1 1 calc(33.3% - 8px)',
+                    minWidth: '100px',
+                    padding: '8px 10px',
                     borderRadius: 'var(--radius-sm)',
                     fontSize: '0.8rem',
                     fontWeight: 500,
@@ -142,14 +122,14 @@ export default function ScannerView({ onAddThreat }) {
 
           <div>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-              Raw Data Payload / Target Input:
+              Inspection Target / Input String:
             </label>
             <textarea
               rows={6}
               className="textarea font-mono"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Paste raw request, IP, or payload snippet..."
+              placeholder="Enter IP address, domain, URL, file hash, or HTTP payload..."
             />
           </div>
 
@@ -161,7 +141,7 @@ export default function ScannerView({ onAddThreat }) {
           >
             {isScanning ? (
               <>
-                <RefreshCw size={18} className="animate-spin" /> Analyzing with CyberGuard AI...
+                <RefreshCw size={18} className="animate-spin" /> Analyzing with FastAPI Backend...
               </>
             ) : (
               <>
@@ -178,14 +158,32 @@ export default function ScannerView({ onAddThreat }) {
               <div style={{ display: 'inline-flex', padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', marginBottom: '1rem' }}>
                 <Cpu size={36} color="#3b82f6" className="animate-pulse" />
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '6px' }}>AI Neural Model Analyzing Payload</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Extracting features, AST tokens, and vector embedding pattern matching...</p>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '6px' }}>FastAPI Backend Analysis in Progress</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sending request to POST http://127.0.0.1:8000/api/analyze...</p>
+            </div>
+          ) : errorMessage ? (
+            <div style={{
+              padding: '1.25rem',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(244, 63, 94, 0.1)',
+              border: '1px solid rgba(244, 63, 94, 0.3)',
+              color: '#f43f5e',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '1rem' }}>
+                <AlertTriangle size={20} /> Backend Connection Error
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                {errorMessage}
+              </p>
             </div>
           ) : scanResult ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className={`badge badge-${scanResult.severity.toLowerCase()}`}>
-                  {scanResult.severity} Risk
+                <span className={`badge ${scanResult.riskLevel === 'HIGH' ? 'badge-critical' : scanResult.riskLevel === 'MEDIUM' ? 'badge-high' : 'badge-low'}`}>
+                  Risk Level: {scanResult.riskLevel}
                 </span>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontFamily: 'var(--font-mono)' }}>
                   {scanResult.timestamp}
@@ -193,12 +191,15 @@ export default function ScannerView({ onAddThreat }) {
               </div>
 
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: scanResult.isThreat ? '#f43f5e' : '#10b981', marginBottom: '4px' }}>
-                  {scanResult.threatType}
+                <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>
+                  Status: <span style={{ color: scanResult.status === 'suspicious' ? '#f43f5e' : '#10b981', fontWeight: 700 }}>{scanResult.status.toUpperCase()}</span>
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: scanResult.isThreat ? '#f43f5e' : '#10b981', marginBottom: '8px' }}>
+                  {scanResult.message}
                 </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {scanResult.details}
-                </p>
+                <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', background: 'var(--bg-dark)', padding: '8px 12px', borderRadius: '4px', border: '1px solid var(--border-color)', wordBreak: 'break-all' }}>
+                  Target ({scanResult.targetType}): {scanResult.target}
+                </div>
               </div>
 
               <div style={{
@@ -210,7 +211,7 @@ export default function ScannerView({ onAddThreat }) {
                 alignItems: 'center',
                 justifyContent: 'space-between'
               }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>AI Confidence Score</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Backend Confidence Score</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#38bdf8' }}>
                   {scanResult.confidence}%
                 </span>
@@ -218,14 +219,20 @@ export default function ScannerView({ onAddThreat }) {
 
               <div>
                 <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
-                  Recommended Mitigation Steps:
+                  Detected Threat Signals & Indicators:
                 </h4>
                 <ul style={{ listStyleType: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
-                  {scanResult.mitigations.map((step, idx) => (
-                    <li key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <CheckCircle size={14} color="#10b981" /> {step}
+                  {scanResult.detectedIndicators.length > 0 ? (
+                    scanResult.detectedIndicators.map((ind, idx) => (
+                      <li key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <AlertTriangle size={14} color="#f43f5e" /> <span style={{ color: '#fda4af' }}>{ind}</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CheckCircle size={14} color="#10b981" /> No malicious patterns or attack vectors found
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
             </div>
@@ -233,7 +240,7 @@ export default function ScannerView({ onAddThreat }) {
             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
               <Terminal size={40} color="var(--text-dim)" style={{ marginBottom: '1rem' }} />
               <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '4px' }}>No Inspection Run Yet</h3>
-              <p style={{ fontSize: '0.825rem' }}>Select a preset or enter payload text on the left to trigger the AI analysis engine.</p>
+              <p style={{ fontSize: '0.825rem' }}>Select a target type or enter an IP, domain, URL, file hash, or payload to analyze via FastAPI backend.</p>
             </div>
           )}
         </div>

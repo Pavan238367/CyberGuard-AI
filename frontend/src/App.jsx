@@ -1,58 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import DashboardView from './components/DashboardView';
 import ScannerView from './components/ScannerView';
 import ThreatLogsView from './components/ThreatLogsView';
 import AnalyticsView from './components/AnalyticsView';
 import SettingsView from './components/SettingsView';
-
-const INITIAL_THREATS = [
-  {
-    id: 1001,
-    type: 'SQL Injection Injection Attempt',
-    sourceIP: '185.220.101.4',
-    severity: 'Critical',
-    confidence: 96,
-    timestamp: '23:04:12',
-    status: 'Active'
-  },
-  {
-    id: 1002,
-    type: 'Brute Force Authentication Burst',
-    sourceIP: '45.142.120.10',
-    severity: 'High',
-    confidence: 88,
-    timestamp: '22:58:05',
-    status: 'Active'
-  },
-  {
-    id: 1003,
-    type: 'Cross-Site Scripting (XSS) Vector',
-    sourceIP: '194.26.29.112',
-    severity: 'Medium',
-    confidence: 79,
-    timestamp: '22:41:19',
-    status: 'Resolved'
-  },
-  {
-    id: 1004,
-    type: 'Unusual API Rate Spike',
-    sourceIP: '103.15.244.8',
-    severity: 'Low',
-    confidence: 62,
-    timestamp: '21:15:40',
-    status: 'Resolved'
-  }
-];
+import { getScanHistory, getAnalytics } from './api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [threats, setThreats] = useState(INITIAL_THREATS);
+  const [threats, setThreats] = useState([]);
+  const [threatsLoading, setThreatsLoading] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(null);
+
+  const fetchScanData = useCallback(async () => {
+    setAnalyticsLoading(true);
+    setThreatsLoading(true);
+    setAnalyticsError(null);
+
+    try {
+      const [historyData, analyticsRes] = await Promise.all([
+        getScanHistory(50),
+        getAnalytics()
+      ]);
+
+      if (Array.isArray(historyData)) {
+        const mapped = historyData.map(item => {
+          const rawConf = item.confidence ?? 0;
+          const confidencePct = Math.round(rawConf <= 1 ? rawConf * 100 : rawConf);
+          let displaySeverity = 'Low';
+          const risk = (item.risk_level || '').toUpperCase();
+          if (risk === 'HIGH') displaySeverity = 'High';
+          else if (risk === 'CRITICAL') displaySeverity = 'Critical';
+          else if (risk === 'MEDIUM') displaySeverity = 'Medium';
+
+          let displayStatus = 'Active';
+          if (item.status === 'clean' || item.status === 'resolved') displayStatus = 'Resolved';
+          else if (item.status === 'quarantined') displayStatus = 'Quarantined';
+
+          return {
+            id: item.id,
+            type: item.detected_indicators && item.detected_indicators.length > 0
+              ? item.detected_indicators[0]
+              : `${(item.target_type || 'Scan').toUpperCase()} Threat Inspection`,
+            sourceIP: item.target || '127.0.0.1',
+            severity: displaySeverity,
+            confidence: confidencePct,
+            timestamp: item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'Just now',
+            status: displayStatus
+          };
+        });
+        setThreats(mapped);
+      }
+      setAnalyticsData(analyticsRes);
+    } catch (err) {
+      console.warn("Failed to fetch scan data from backend API:", err.message);
+      setAnalyticsError(err.message || 'Failed to connect to backend API');
+    } finally {
+      setAnalyticsLoading(false);
+      setThreatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchScanData();
+  }, [fetchScanData]);
 
   const activeAlertCount = threats.filter(t => t.status === 'Active').length;
 
-  const handleAddThreat = (newThreat) => {
-    setThreats(prev => [newThreat, ...prev]);
+  const handleAddThreat = () => {
+    fetchScanData();
   };
 
   const handleQuarantineThreat = (threatId) => {
@@ -79,6 +98,11 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <DashboardView 
             threats={threats} 
+            threatsLoading={threatsLoading}
+            analyticsData={analyticsData}
+            analyticsLoading={analyticsLoading}
+            analyticsError={analyticsError}
+            onRefreshAnalytics={fetchScanData}
             onNavigateToScanner={() => setActiveTab('scanner')} 
             onQuarantineThreat={handleQuarantineThreat}
           />
@@ -95,7 +119,14 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'analytics' && <AnalyticsView />}
+        {activeTab === 'analytics' && (
+          <AnalyticsView 
+            analyticsData={analyticsData}
+            analyticsLoading={analyticsLoading}
+            analyticsError={analyticsError}
+            onRefreshAnalytics={fetchScanData}
+          />
+        )}
 
         {activeTab === 'settings' && <SettingsView />}
       </main>
@@ -114,7 +145,7 @@ export default function App() {
           </div>
           <div style={{ display: 'flex', gap: '16px', fontFamily: 'var(--font-mono)' }}>
             <span>Status: <span style={{ color: '#34d399' }}>Protected</span></span>
-            <span>Mode: Standalone Frontend Shell</span>
+            <span>Mode: FastAPI + SQLite Real Telemetry</span>
           </div>
         </div>
       </footer>
