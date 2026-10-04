@@ -1,7 +1,7 @@
 import sqlite3
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, UTC
 
 # SQLite database file path stored inside backend folder
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cyberguard.db")
@@ -39,7 +39,7 @@ def save_scan(target: str, target_type: str, risk_level: str, confidence: float,
     """Save a scan analysis result into SQLite database."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     indicators_json = json.dumps(detected_indicators)
 
     cursor.execute("""
@@ -162,8 +162,7 @@ def get_analytics() -> dict:
     average_confidence = round(float(avg_conf_row), 4) if avg_conf_row is not None else 0.0
 
     # Recent scans (scans created in the last 24 hours)
-    from datetime import datetime, timedelta
-    cutoff = (datetime.utcnow() - timedelta(days=1)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     cursor.execute("SELECT COUNT(*) FROM scan_history WHERE timestamp >= ?", (cutoff,))
     recent_scan_count = cursor.fetchone()[0] or 0
 

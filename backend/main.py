@@ -1,4 +1,5 @@
 import re
+from contextlib import asynccontextmanager
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,9 +10,18 @@ try:
 except ImportError:
     from database import init_db, save_scan, get_history, get_analytics
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize SQLite database tables on application launch."""
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="CyberGuard AI API",
-    description="Backend API service for CyberGuard AI threat detection and security monitoring."
+    description="Backend API service for CyberGuard AI threat detection and security monitoring.",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -21,12 +31,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup():
-    """Initialize SQLite database tables on application launch."""
-    init_db()
 
 
 SUPPORTED_TARGET_TYPES = {"payload", "ip", "domain", "url", "hash"}
