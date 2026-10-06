@@ -123,7 +123,7 @@ export default function Navbar({ activeTab, setActiveTab, alertCount }) {
           <div className="status-dot status-dot-active" />
           <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#34d399', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Radio size={14} className="animate-pulse" />
-            AI Guard Active
+            API Connected
           </span>
         </div>
       </div>

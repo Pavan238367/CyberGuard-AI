@@ -141,13 +141,13 @@ export default function AnalyticsView({
 
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '8px' }}>
-                <span>Avg AI Confidence</span>
+                <span>Avg Threat Confidence</span>
                 <Cpu size={18} color="#8b5cf6" />
               </div>
               <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#34d399' }}>
                 {avgConf}%
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Threat Model Score</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>Pattern Detection Score</div>
             </div>
 
             <div className="card">

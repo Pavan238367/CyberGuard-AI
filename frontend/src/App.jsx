@@ -141,10 +141,10 @@ export default function App() {
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            CyberGuard AI Platform &copy; {new Date().getFullYear()} — Intelligent Security Operations Center
+            CyberGuard AI Platform &copy; {new Date().getFullYear()} — Security Threat Inspection Platform
           </div>
           <div style={{ display: 'flex', gap: '16px', fontFamily: 'var(--font-mono)' }}>
-            <span>Status: <span style={{ color: '#34d399' }}>Protected</span></span>
+            <span>Status: <span style={{ color: '#34d399' }}>API Connected</span></span>
             <span>Mode: FastAPI + SQLite Real Telemetry</span>
           </div>
         </div>

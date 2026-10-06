@@ -31,26 +31,26 @@ export default function DashboardView({
       icon: ShieldAlert
     },
     {
-      title: 'Blocked Threats',
-      value: analyticsData ? `${analyticsData.blocked_threats ?? 0}` : `${resolvedCount}`,
-      subtitle: analyticsData ? `${analyticsData.resolved_count} Clean/Resolved` : 'Auto-Mitigated',
-      change: 'Auto-Protection',
-      color: '#10b981',
+      title: 'High-Risk Scans',
+      value: analyticsData ? `${(analyticsData.high_count || 0) + (analyticsData.critical_count || 0)}` : `${threats.filter(t => t.severity === 'High' || t.severity === 'Critical').length}`,
+      subtitle: analyticsData ? `${analyticsData.high_count || 0} High / ${analyticsData.critical_count || 0} Critical` : 'Flagged Scans',
+      change: 'Rule Detected',
+      color: '#f97316',
       icon: Lock
     },
     {
-      title: 'Active AI Models',
-      value: analyticsData ? `${analyticsData.active_models_count ?? 4} Active` : '4 Active',
-      subtitle: 'SQLi, XSS & Keyword Engines',
-      change: '100% Operational',
+      title: 'Detection Rules',
+      value: 'Rule-Based',
+      subtitle: 'SQLi, XSS & Keyword Rules',
+      change: 'Active Patterns',
       color: '#8b5cf6',
       icon: Cpu
     },
     {
       title: 'Mitigation Rate',
       value: totalScans > 0 && analyticsData ? `${analyticsData.mitigation_rate ?? 0}%` : 'N/A',
-      subtitle: totalScans > 0 ? `${resolvedCount} of ${activeCount + resolvedCount} Mitigated` : 'No Threat Data',
-      change: totalScans > 0 && analyticsData && analyticsData.mitigation_rate >= 80 ? 'Optimal' : 'Active Monitoring',
+      subtitle: totalScans > 0 ? `${resolvedCount} of ${totalScans} Scans Resolved` : 'No Threat Data',
+      change: 'SQLite Computed',
       color: '#06b6d4',
       icon: Zap
     },
@@ -63,10 +63,10 @@ export default function DashboardView({
       icon: Activity
     },
     {
-      title: 'Avg AI Confidence',
+      title: 'Avg Confidence Score',
       value: totalScans > 0 ? `${avgConf}%` : 'N/A',
-      subtitle: 'Classifier Score',
-      change: 'FastAPI Model',
+      subtitle: 'Detection Score',
+      change: 'FastAPI Backend',
       color: '#ec4899',
       icon: CheckCircle2
     }
@@ -97,14 +97,14 @@ export default function DashboardView({
       }}>
         <div style={{ maxWidth: '600px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <span className="badge badge-low">Live Defense Active</span>
+            <span className="badge badge-low">THREAT ANALYSIS ACTIVE</span>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>SQLite Analytics Sync</span>
           </div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '6px' }}>
-            Real-Time AI Security Sentinel
+            Cybersecurity Threat Analysis Dashboard
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            CyberGuard AI is actively inspecting network logs, API payloads, and payload metrics for anomalies.
+            CyberGuard AI analyzes target strings, IP addresses, domains, URLs, file hashes, and payloads for security indicators.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -119,7 +119,7 @@ export default function DashboardView({
             </button>
           )}
           <button className="btn btn-primary" onClick={onNavigateToScanner}>
-            <Zap size={16} /> Run AI Threat Audit
+            <Zap size={16} /> Run Threat Scan
           </button>
         </div>
       </div>
@@ -310,7 +310,7 @@ export default function DashboardView({
           }}>
             <Lock size={20} color="#60a5fa" />
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Auto-Quarantine is enabled for threats with confidence &gt; 85%.
+              Flagged threat records are tracked in local SQLite storage.
             </div>
           </div>
         </div>

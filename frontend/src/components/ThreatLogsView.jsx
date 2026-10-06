@@ -296,7 +296,7 @@ export default function ThreatLogsView({ threats: propThreats, onQuarantineThrea
                       </div>
                       <p style={{ fontSize: '0.825rem', marginTop: '4px' }}>
                         {logs.length === 0 
-                          ? 'SQLite database has no scan history. Execute an AI inspection in Threat Scanner to record scan events.' 
+                          ? 'SQLite database has no scan history. Execute a threat inspection in Threat Scanner to record scan events.' 
                           : 'No threat log events matched your search or severity filter.'}
                       </p>
                     </td>
@@ -335,7 +335,7 @@ export default function ThreatLogsView({ threats: propThreats, onQuarantineThrea
               </div>
 
               <div style={{ background: 'var(--bg-dark)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '4px' }}>AI Model Diagnosis:</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginBottom: '4px' }}>Detection Engine Findings:</div>
                 <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)' }}>
                   {selectedThreat.message || 'Anomaly score analyzed against security rules.'}
                 </div>
@@ -358,7 +358,7 @@ export default function ThreatLogsView({ threats: propThreats, onQuarantineThrea
                   className="btn btn-primary" 
                   style={{ width: '100%' }}
                 >
-                  Quarantine & Block Origin IP
+                  Mark as Quarantined
                 </button>
               )}
             </div>

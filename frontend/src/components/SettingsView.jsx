@@ -22,7 +22,7 @@ export default function SettingsView() {
           <Settings size={24} color="#3b82f6" /> CyberGuard AI Configuration
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          Adjust AI threat confidence thresholds, automated response policies, and alert settings.
+          Adjust threat confidence thresholds, response policies, and log settings.
         </p>
       </div>
 
@@ -32,12 +32,12 @@ export default function SettingsView() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
             <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sliders size={16} color="#3b82f6" /> AI Threat Detection Confidence Threshold
+              <Sliders size={16} color="#3b82f6" /> Threat Detection Confidence Threshold
             </label>
             <span style={{ fontWeight: 700, color: '#38bdf8', fontFamily: 'var(--font-mono)' }}>{sensitivity}%</span>
           </div>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-            Flag payloads as malicious when AI model confidence equals or exceeds this percentage.
+            Flag targets as malicious when detection confidence equals or exceeds this percentage.
           </p>
           <input
             type="range"
@@ -57,10 +57,10 @@ export default function SettingsView() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Lock size={16} color="#10b981" /> Automated Threat Quarantine
+                <Lock size={16} color="#10b981" /> Threat Quarantine Policy
               </div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Automatically block origin IPs for Critical severity detections.
+                Enable quarantine option for high-risk threat detections.
               </p>
             </div>
             <input

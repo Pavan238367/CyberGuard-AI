@@ -77,7 +77,7 @@ export default function ScannerView({ onAddThreat }) {
           <Cpu size={24} color="#3b82f6" /> AI Threat Scanner & Vulnerability Inspector
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Real-time AI security inspection connected to CyberGuard FastAPI backend. Inspect IP addresses, domains, URLs, file hashes, and payloads.
+          Rule-based threat pattern inspection connected to CyberGuard FastAPI backend. Inspect IP addresses, domains, URLs, file hashes, and payloads.
         </p>
       </div>
 
@@ -145,7 +145,7 @@ export default function ScannerView({ onAddThreat }) {
               </>
             ) : (
               <>
-                <Zap size={18} /> Execute AI Inspection
+                <Zap size={18} /> Execute Threat Inspection
               </>
             )}
           </button>
